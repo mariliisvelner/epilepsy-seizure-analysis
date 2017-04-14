@@ -6,44 +6,43 @@ from math import ceil
 import scipy.stats as st
 import pyeeg
 import matplotlib.pyplot as plt
+import sys
 
-DOG1_DIR = "/gpfs/hpchome/velner/mat_files/Dog_1"
-DOG2_DIR = "/gpfs/hpchome/velner/mat_files/Dog_2"
-DOG3_DIR = "/gpfs/hpchome/velner/mat_files/Dog_3"
-DOG4_DIR = "/gpfs/hpchome/velner/mat_files/Dog_4"
-DOG5_DIR = "/gpfs/hpchome/velner/mat_files/Dog_5"
-PATIENT1_DIR = "/gpfs/hpchome/velner/mat_files/Patient_1"
-PATIENT2_DIR = "/gpfs/hpchome/velner/mat_files/Patient_2"
+# The directory of the py files
+MAIN_DIR = sys.argv[1]
+# The directory of the mat files
+MAT_FILE_DIR = sys.argv[2]
+# The number of interictal segments of the given object
+INTERICTALS = int(sys.argv[3])
+# The number of preictal segments of the given object
+PREICTALS = int(sys.argv[4])
+# The length of the time windows to be extracted from the data (in seconds)
+WINDOW_LENGTH = int(sys.argv[5])
+# The file which contains templates for mat files
+TEMPLATE_FILE = sys.argv[6]
+# The file which contains the feature names
+FEATURE_FILE = sys.argv[7]
+# The object (Dog_n (n = 1..5) or Patient_m (m = 1..2))
+OBJECT = sys.argv[8]
+# The name of the file where the extracted features will be written
+RESULT_FNM = sys.argv[9]
 
-MAIN_DIR = "/gpfs/hpchome/velner/"
-# sys.path.insert(0, "C:\\Users\\MariLiis\\Documents\\Ylikool\\THESIS\\pyEEG\\pyeeg")
 
-DOG1_PREICTALS = 24
-DOG1_INTERICTALS = 480
-DOG2_PREICTALS = 42
-DOG2_INTERICTALS = 500
-DOG3_INTERICTALS = 1440
-DOG3_PREICTALS = 72
-DOG4_INTERICTALS = 804
-DOG4_PREICTALS = 97
-DOG5_PREICTALS = 30
-DOG5_INTERICTALS = 450
-PATIENT1_INTERICTALS = 50
-PATIENT1_PREICTALS = 18
-PATIENT2_INTERICTALS = 42
-PATIENT2_PREICTALS = 18
+# Read in the templates
+temp_f = open(TEMPLATE_FILE, encoding="UTF-8")
+templates = [line.split(";")[1].strip() for line in temp_f.readlines()]
+temp_f.close()
 
-# In seconds
-WINDOW_LENGTH_1 = 10
-WINDOW_LENGTH_2 = 60
+INTERICTAL_MAT_TEMPL = templates[0]
+PREICTAL_MAT_TEMPL = templates[1]
+INTERICTAL_SEG_TEMPL = templates[2]
+PREICTAL_SEG_TEMPL = templates[3]
 
-INTERICTAL_MAT_TEMPL = "_interictal_segment_{0:04d}.mat"
-PREICTAL_MAT_TEMPL = "_preictal_segment_{0:04d}.mat"
-INTERICTAL_SEG_TEMPL = "interictal_segment_{}"
-PREICTAL_SEG_TEMPL = "preictal_segment_{}"
-FEATURES = ["class", "electrode", "seg", "activity", "mobility", "complexity", "hfd", "skewness", "kurtosis", "ps_delta",
-            "ps_theta", "ps_alpha", "ps_beta", "ps_lowgamma", "ps_highgamma", "psr_delta", "psr_theta", "psr_alpha",
-            "psr_beta", "psr_lowgamma", "psr_highgamma"]
+# Read in the features
+features_f = open(FEATURE_FILE, encoding="UTF-8")
+FEATURES = [line.strip() for line in features_f.readlines()]
+features_f.close()
+
 
 """
 Taken from the pyEEG module, added Hjorth activity (TP) to the returned values.
@@ -172,6 +171,8 @@ def get_state_data(classif, mat_templ, seg_templ, file_no, window_length):
                 datarow = [classif, elc + 1, i, activity, mobility, complexity, hfd, skewness, kurtosis] + list(
                     bins[0]) + list(bins[1])
                 result.append(datarow)
+                break
+            break
     return result
 
 
@@ -215,14 +216,6 @@ def write_to_file(file_name, headings, data):
     result.close()
 
 
-# dog_1 = get_object_data(DOG1_DIR, "Dog_1", DOG1_INTERICTALS, DOG1_PREICTALS, WINDOW_LENGTH_1)
-# dog_2 = get_object_data(DOG2_DIR, "Dog_2", DOG2_INTERICTALS, DOG2_PREICTALS, WINDOW_LENGTH_2)
-# dog_3 = get_object_data(DOG3_DIR, "Dog_3", DOG3_INTERICTALS, DOG3_PREICTALS, WINDOW_LENGTH_2)
-# dog_4 = get_object_data(DOG4_DIR, "Dog_4", DOG4_INTERICTALS, DOG4_PREICTALS, WINDOW_LENGTH_2)
-dog_5 = get_object_data(DOG5_DIR, "Dog_5", DOG5_INTERICTALS, DOG5_PREICTALS, WINDOW_LENGTH_2)
+data = get_object_data(MAT_FILE_DIR, OBJECT, INTERICTALS, PREICTALS, WINDOW_LENGTH)
 
-# patient_1 = get_object_data(PATIENT1_DIR, "Patient_1", PATIENT1_INTERICTALS, PATIENT1_PREICTALS, WINDOW_LENGTH_1)
-# patient_2 = get_object_data(PATIENT2_DIR, "Patient_2", PATIENT2_INTERICTALS, PATIENT2_PREICTALS, WINDOW_LENGTH_1)
-
-dog_data = dog_5
-write_to_file("dog5_minute_data.csv", FEATURES, dog_data)
+write_to_file(RESULT_FNM, FEATURES, data)
