@@ -16,6 +16,7 @@ TO_PREDICT = "class"
 
 """
 :param filename (str) -- the name of the file to read the data from
+                         the file must reside in the directory DATA_DIR
 
 :return the data (pandas DataFrame) from the given file
 """

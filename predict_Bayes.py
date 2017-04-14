@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import operator
+
+import sys
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import f_classif
 from sklearn.model_selection import StratifiedKFold
@@ -9,22 +11,8 @@ from sklearn.model_selection import cross_val_score
 from sklearn.naive_bayes import GaussianNB
 from sklearn.utils import shuffle
 
-"""
-:param is_in_HPC (bool) -- if the program is to be run in HPC
-
-:return a tuple containing the main directory, where the program is, and the data directory, where the data files reside 
-"""
-def get_directories(is_in_HPC):
-    HPC_MAIN_DIR = "/gpfs/hpchome/velner/"
-    HPC_DATA_DIR = "/gpfs/hpchome/velner/data/"
-    HOME_MAIN_DIR = "C:\\Users\\MariLiis\\Documents\\Ylikool\\THESIS\\Thesis"
-    HOME_DATA_DIR = "C:\\Users\\MariLiis\\Documents\\Ylikool\\THESIS\\Thesis\\data"
-    if is_in_HPC:
-        return HPC_MAIN_DIR, HPC_DATA_DIR
-    return HOME_MAIN_DIR, HOME_DATA_DIR
-
-
-MAIN_DIR, DATA_DIR = get_directories(False)
+MAIN_DIR = sys.argv[1]
+DATA_DIR = sys.argv[2]
 TO_PREDICT = "class"
 
 """
@@ -33,9 +21,9 @@ TO_PREDICT = "class"
 
 :return the data (pandas DataFrame) from the given file
 """
-def read_data(dir, filename):
+def read_data(filename):
     print("Reading data...")
-    os.chdir(dir)
+    os.chdir(DATA_DIR)
     data = pd.read_csv(filename, delimiter=";")
     os.chdir(MAIN_DIR)
     return data
@@ -48,7 +36,7 @@ def read_data(dir, filename):
 2) the labels (pandas DataFrame) of the samples in the data 3) the features (list) of data  
 """
 def get_data_target_features(filename, to_predict):
-    data = read_data(DATA_DIR, filename)
+    data = read_data(filename)
     features = [feature for feature in data if not feature in [to_predict, "seg"]]
     print("Features: ")
     print(features)
