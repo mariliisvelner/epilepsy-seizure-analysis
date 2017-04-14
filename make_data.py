@@ -24,7 +24,7 @@ TEMPLATE_FILE = sys.argv[6]
 FEATURE_FILE = sys.argv[7]
 # The object (Dog_n (n = 1..5) or Patient_m (m = 1..2))
 OBJECT = sys.argv[8]
-# The name of the file where the extracted features will be written
+# The file where the extracted features will be written
 RESULT_FNM = sys.argv[9]
 
 
