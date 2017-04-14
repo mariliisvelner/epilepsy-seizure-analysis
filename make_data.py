@@ -45,7 +45,8 @@ features_f.close()
 
 
 """
-Taken from the pyEEG module, added Hjorth activity (TP) to the returned values.
+Taken from the PyEEG module, added Hjorth activity (TP) to the returned values.
+PyEEG: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3070217/
 """
 def hjorth(X, D=None):
     """ Compute Hjorth mobility and complexity of a time series from either two
