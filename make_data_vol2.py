@@ -30,8 +30,6 @@ FEATURES.remove(CLASS_COL)
 FEATURES.remove(SEG_COL)
 
 assert ELEC_COL in FEATURES, "Column {} is not among the features!".format(ELEC_COL)
-assert SEG_COL in FEATURES, "Column {} is not among the features!".format(SEG_COL)
-assert CLASS_COL in FEATURES, "Column {} is not among the features!".format(CLASS_COL)
 
 """
 :param filename (str) -- the name of the file to read the data from
@@ -54,7 +52,7 @@ data (list<list<float>>) -- the data to be written to the file; the length of a 
 Writes the headings and data to a file with the given name.
 """
 def write_to_file(file_name, headings, data):
-    print("writing to file " + file_name)
+    print("Writing to file " + file_name)
     os.chdir(MAIN_DIR)
     result = open(file_name, 'w')
     writer = csv.writer(result, dialect='excel', delimiter=";")
@@ -80,6 +78,7 @@ concatenated to a single row. This means that there are NO "concurrent" samples 
 time window 2; ...).
 """
 def get_class_data(class_, old_data, electrodes):
+    print("Calculating new data for class {}...".format(class_))
     new_class_data = []
     # Get the <class_> data (interictal or preictal)
     old_class_data = old_data[old_data[CLASS_COL] == class_]

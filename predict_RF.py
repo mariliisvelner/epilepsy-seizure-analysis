@@ -12,6 +12,8 @@ from sklearn.utils import shuffle
 
 MAIN_DIR = sys.argv[1]
 DATA_DIR = sys.argv[2]
+# Name of the file
+FNM = sys.argv[3]
 TO_PREDICT = "class"
 
 """
@@ -199,4 +201,4 @@ def get_feature_importances(data, features, rfc):
 #
 # cross_validate(data, target, 5, True)
 
-predicting_with_different_segs("patient1_minute_data_vol2.csv", TO_PREDICT, 5)
+predicting_with_different_segs(FNM, TO_PREDICT, 5)

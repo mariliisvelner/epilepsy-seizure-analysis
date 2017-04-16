@@ -172,8 +172,6 @@ def get_state_data(classif, mat_templ, seg_templ, file_no, window_length):
                 datarow = [classif, elc + 1, i, activity, mobility, complexity, hfd, skewness, kurtosis] + list(
                     bins[0]) + list(bins[1])
                 result.append(datarow)
-                break
-            break
     return result
 
 
@@ -206,7 +204,7 @@ data (list<list<float>>) -- the data to be written to the file; the length of a 
 Writes the headings and data to a file with the given name.
 """
 def write_to_file(file_name, headings, data):
-    print("writing to file " + file_name)
+    print("Writing to file " + file_name)
     os.chdir(MAIN_DIR)
     result = open(file_name, 'w')
     writer = csv.writer(result, dialect='excel', delimiter=";")
