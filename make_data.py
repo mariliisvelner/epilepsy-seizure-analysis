@@ -142,7 +142,7 @@ def get_state_data(classif, mat_templ, seg_templ, file_no, window_length):
     for i in range(1, file_no + 1):
         print("mat_file: ", i)
         file = sio.loadmat(mat_templ.format(i))
-        data = file[seg_templ.format(str(i))][0][0]
+        data = file[seg_templ.format(i)][0][0]
 
         # READ IN DATA
         array = data["data"]
@@ -152,7 +152,6 @@ def get_state_data(classif, mat_templ, seg_templ, file_no, window_length):
         # data["channels"] -- electrode names
 
         array = array.astype(np.float, copy=False)
-
         for elc in range(len(array)):
             windows = make_windows(array[elc], window_length, sampling_freq)
 
