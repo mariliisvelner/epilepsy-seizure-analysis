@@ -9,11 +9,10 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
 from sklearn.utils import shuffle
 
-
-MAIN_DIR = sys.argv[1]
-DATA_DIR = sys.argv[2]
-# Name of the file
-FNM = sys.argv[3]
+# The directory of the mat files
+DATA_DIR = sys.argv[1]
+# Name of the data file
+FNM = sys.argv[2]
 TO_PREDICT = "class"
 
 print("File: " + FNM)
@@ -28,7 +27,6 @@ def read_data(filename):
     print("Reading data...")
     os.chdir(DATA_DIR)
     data = pd.read_csv(filename, delimiter=";")
-    os.chdir(MAIN_DIR)
     return data
 
 """
@@ -53,8 +51,24 @@ def get_data_target_features(filename, to_predict):
     data_target = pd.concat([data_interictal, data_preictal], ignore_index=True)[to_predict]
     return data_features, data_target, features
 
+"""
+:param filename (str) -- the name of the file where the data resides
+:param to_predict (str) -- the name of the value which is to be predicted
+:param splits (int) -- the number of splits for the recursive feature elimination
+:param is_shuffled (bool) -- True, if the data is to be shuffled before splitting in the recursive feature elimination,
+                             False otherwise
+:param steps (int) -- corresponds to the number of features to remove at each iteration
+                          
+Performs a recursive feature elimination with automatic tuning of the number of features selected with cross-validation.
+Prints out the prediction accuracy score and the feature rankings. 
+"""
+def predicting_with_RFECV(filename, to_predict, splits, is_shuffled, steps):
+    data_target_features = get_data_target_features(filename, to_predict)
 
-def recursive_feature_elimination(data, target, features, splits, is_shuffled, steps):
+    data = data_target_features[0]
+    target = data_target_features[1]
+    features = data_target_features[2]
+
     lm = linear_model.LogisticRegressionCV(solver="liblinear", penalty="l1")
     skf = StratifiedKFold(n_splits=splits, shuffle=is_shuffled)
     selector = RFECV(lm, step=steps, cv=skf)
@@ -76,30 +90,70 @@ def recursive_feature_elimination(data, target, features, splits, is_shuffled, s
 
     print("Score: " + str(selector.score))
 
+"""
+:param filename (str) -- the name of the file where the data resides
+:param to_predict (str) -- the feature which is to be predicted
+:param iterations (int) -- the number of iterations for the cross-validation
 
-def cross_validate(data, target, splits, is_shuffled):
-    lm = linear_model.LogisticRegressionCV(solver="liblinear", penalty="l1")
-    skf = StratifiedKFold(n_splits=splits, shuffle=is_shuffled)
+Fits and predicts shuffled data for <iterations> iterations, averages the scores and coefficients and prints them out.
+"""
+def predicting_with_cross_validation(filename, to_predict, iterations):
+    data = read_data(filename)
+    features = [feature for feature in data if not feature in [to_predict, "seg"]]
+    print("Features: ")
+    print(features)
+    interictal_data = data[data[to_predict] == 1]
+    preictal_data = data[data[to_predict] == 2]
 
-    scores = cross_val_score(lm, data, target, cv=skf)
-    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+    # The number of windows of each class (interictal and preictal) to include both in the training and test data
+    no_of_class_windows = int(len(preictal_data) / 2)
 
-
-def get_coef_values(data, target, features, iterations):
     coef_dict = defaultdict(float)
+    predictions = []
     for i in range(iterations):
+        print("Iteration ", str(i + 1))
         lm = linear_model.LogisticRegressionCV(solver="liblinear", penalty="l1")
-        lm.fit(data, target)
-        # print(i)
-        # print(lm.coef_)
+
+        # Shuffle the data first
+        preictal_data = shuffle(preictal_data)
+        interictal_data = shuffle(interictal_data)
+
+        # Take the first no_of_class_windows preictal and interictal windows
+        train_X_preictal = preictal_data[features][:no_of_class_windows]
+        train_y_preictal = preictal_data[:no_of_class_windows][to_predict]
+        train_X_interictal = interictal_data[:no_of_class_windows][features]
+        train_y_interictal = interictal_data[:no_of_class_windows][to_predict]
+
+        train_data = pd.concat([train_X_preictal, train_X_interictal], ignore_index=True)
+        train_target = pd.concat([train_y_preictal, train_y_interictal], ignore_index=True)
+
+        # Take the next no_of_class_windows preictal and interictal windows
+        test_X_preictal = preictal_data[no_of_class_windows:][features]
+        test_y_preictal = preictal_data[no_of_class_windows:][to_predict]
+        test_X_interictal = interictal_data[no_of_class_windows:no_of_class_windows * 2][features]
+        test_y_interictal = interictal_data[no_of_class_windows:no_of_class_windows * 2][to_predict]
+
+        test_data = pd.concat([test_X_preictal, test_X_interictal], ignore_index=True)
+        test_target = pd.concat([test_y_preictal, test_y_interictal], ignore_index=True)
+
+        lm.fit(train_data, train_target)
         coef = lm.coef_[0]
+        # Increase each feature's coefficient sum in the coef_dict dictionary
         for j in range(len(features)):
             coef_dict[features[j]] += abs(coef[j])
 
+        # Predict and append the score to the predictions list
+        score = lm.score(test_data, test_target)
+        predictions.append(score)
+
+    print("Average prediction score: ", str(round(sum(predictions)/len(predictions), 3)))
+
+    print("Feature ranking with and averaged coefficients: ")
     coef_list = list(zip(list(coef_dict.values()), list(coef_dict.keys())))
     coef_list = sorted(coef_list, reverse=True)
-    for pair in coef_list:
-        print(pair)
+    for i in range(len(coef_list)):
+        avg_coef = round(coef_list[i][0]/iterations, 4)
+        print("{}. {} ({})".format(str(i + 1), coef_list[i][1], str(avg_coef)))
 
 """
 :param filename (str) -- the name of the file where the data resides
@@ -196,14 +250,7 @@ def predicting_with_different_segs(filename, to_predict, tries):
     print("All scores: " + str(scores))
     print("Average score: " + str(sum(scores) / len(scores)))
 
-# data_target_features = get_data_target_features("patient1_minute_data_vol2.csv", TO_PREDICT)
-#
-# data = data_target_features[0]
-# target = data_target_features[1]
-# features = data_target_features[2]
-#
-# get_coef_values(data, target, features, 5)
-#
-# cross_validate(data, target, 5, True)
+# predicting_with_different_segs(FNM, TO_PREDICT, 5)
 
-predicting_with_different_segs(FNM, TO_PREDICT, 5)
+predicting_with_cross_validation(FNM, TO_PREDICT, 5)
+
