@@ -1,8 +1,12 @@
 import os
 
 import sys
+from collections import defaultdict
+
 from sklearn import ensemble
 import pandas as pd
+from sklearn.decomposition import TruncatedSVD
+from sklearn.manifold import TSNE
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
 import numpy as np
@@ -10,11 +14,12 @@ import matplotlib.pyplot as plt
 from sklearn.utils import shuffle
 
 
-MAIN_DIR = sys.argv[1]
-DATA_DIR = sys.argv[2]
-# Name of the file
-FNM = sys.argv[3]
+# Name of the data file
+DATA_DIR = sys.argv[1]
+# Name of the data file
+FNM = sys.argv[2]
 TO_PREDICT = "class"
+print("File: " + FNM)
 
 """
 :param filename (str) -- the name of the file to read the data from
@@ -26,7 +31,6 @@ def read_data(filename):
     print("Reading data...")
     os.chdir(DATA_DIR)
     data = pd.read_csv(filename, delimiter=";")
-    os.chdir(MAIN_DIR)
     return data
 
 """
@@ -50,6 +54,47 @@ def get_data_target_features(filename, to_predict):
     data_features = pd.concat([data_interictal, data_preictal], ignore_index=True)[features]
     data_target = pd.concat([data_interictal, data_preictal], ignore_index=True)[to_predict]
     return data_features, data_target, features
+
+"""
+:param data (array) -- the data to plot
+:param target (array) -- the target values (1 (interictal) or 2 (preictal) corresponding to the data
+
+Plots the data. Pink dots represent interictal windows and green dots preictal windows. 
+"""
+def show_tsne_plot(data, target):
+    data_reduced = TruncatedSVD(n_components=2, random_state=0).fit_transform(data)
+    data_tsne = TSNE().fit_transform(data_reduced)
+    plt.figure(figsize=(10, 5))
+    plt.subplot(121)
+    colors = ["green" if target[i] == 2 else "pink" for i in range(len(target))]
+    plt.scatter(data_tsne[:, 0], data_tsne[:, 1], c=colors)
+    plt.show()
+
+"""
+:param importance_tuples (list) -- a list of tuples, which contain features and their importances; is ordered 
+                                   decreasingly by the importance value
+:param stds (list) -- a list containing the standard deviations of the features; standard deviation with index i 
+                      corresponds to the feature in importance_tuples[i]
+:param features (list) -- a list that contains all of the features in the standard order
+
+Plots the features with their importances and standard deviations starting from the feature with the largest importance.
+"""
+def plot_feature_importances(importance_tuples, stds, features):
+    features_ordered = [pair[1] for pair in importance_tuples]
+    importances = [pair[0] for pair in importance_tuples]
+    indices = [features.index(feature) for feature in features_ordered]
+
+    print("Feature ranking: ")
+    for i in range(len(features_ordered)):
+        print("{}. {} ({})".format(str(i + 1), features_ordered[i], str(importances[i])))
+
+
+    plt.figure()
+    plt.title("Feature importances")
+    plt.bar(range(len(features_ordered)), importances, color="r", yerr=stds, align="center")
+    plt.xticks(range(len(features)), indices)
+    plt.xlim([-1, len(features)])
+    plt.show()
 
 """
 :param filename (str) -- the name of the file where the data resides
@@ -91,8 +136,9 @@ def predicting_with_different_segs(filename, to_predict, tries):
         # Get the TRAIN SEGMENTS as the FIRST no_cl_seg segments of the shuffled preictal and interictal segments
         train_preictal_segments = preictal_segments[:no_cl_seg]
         train_interictal_segments = interictal_segments[:no_cl_seg]
-        print("{}. Training set interictal segments: {}".format(str(i + 1), str(train_interictal_segments)))
-        print("{}. Training set preictal segments: {}".format(str(i + 1), str(train_preictal_segments)))
+        print("{}. iteration".format(str(i + 1)))
+        print("Training set interictal segments: " + str(train_interictal_segments))
+        print("Training set preictal segments: " + str(train_preictal_segments))
 
         # Get the interictal windows, which's segments are in train_interictal_segments
         train_interictal_windows = data_interictal[data_interictal["seg"].isin(train_interictal_segments)]
@@ -110,8 +156,8 @@ def predicting_with_different_segs(filename, to_predict, tries):
         # Get the TEST SEGMENTS as the LAST no_cl_seg segments of the shuffled preictal and interictal segments
         test_preictal_segments = preictal_segments[no_cl_seg:]
         test_interictal_segments = interictal_segments[no_cl_seg:no_cl_seg * 2]
-        print("{}. Test set interictal segments: {}".format(str(i + 1), str(test_interictal_segments)))
-        print("{}. Test set preictal segments: {}".format(str(i + 1), str(test_preictal_segments)))
+        print("Test set interictal segments: " + str(test_interictal_segments))
+        print("Test set preictal segments: " + str(test_preictal_segments))
 
         # Get the interictal windows, which's segments are in test_interictal_segments
         test_interictal_windows = data_interictal[data_interictal["seg"].isin(test_interictal_segments)]
@@ -129,7 +175,32 @@ def predicting_with_different_segs(filename, to_predict, tries):
         # Fit and predict
         rfc = ensemble.RandomForestClassifier(n_estimators=10, max_features=None, class_weight="balanced")
         rfc.fit(train_data, train_target)
-        scores.append(rfc.score(test_data, test_target))
+
+        predictions = rfc.predict(test_data)
+        correct_data = []
+        correct_target = []
+        incorrect_data = []
+        incorrect_target = []
+        correctly_predicted = 0
+        for i in range(len(predictions)):
+            if predictions[i] == test_target[i]:
+                correct_data.append(test_data.iloc[i])
+                correct_target.append(test_target.iloc[i])
+                correctly_predicted += 1
+            else:
+                incorrect_data.append(test_data.iloc[i])
+                incorrect_target.append(test_target.iloc[i])
+        # score = rfc.score(test_data, test_target)
+        scores.append(correctly_predicted / len(test_target))
+
+        print("Test interictal segments: " + str(test_interictal_segments))
+        print("Test preictal segments: " + str(test_preictal_segments))
+
+        print("Incorrectly predicted tSNE")
+        show_tsne_plot(incorrect_data, incorrect_target)
+
+        print("Correctly predicted tSNE")
+        show_tsne_plot(correct_data, correct_target)
 
         # Get the feature importances for this iteration and add the results to the sums in feature_importances
         importances = rfc.feature_importances_
@@ -148,21 +219,76 @@ def predicting_with_different_segs(filename, to_predict, tries):
     print("Average score: " + str(sum(scores) / len(scores)))
 
 """
-:param data (pandas DataFrame) -- the data to be used in predicting
-:param target (pandas DataFrame) -- the target values to be predicted
+:param filename (str) -- the name of the file where the data resides
+:param to_predict (str) -- the name of the value which is to be predicted
 :param splits (int) -- the number of splits to be made in cross validation
 :param is_shuffled (bool) -- True, if the data is to be shuffled before split into training and test data,
 otherwise False
 
-Performs cross-validation on the given data using StratifiedKFold and prints the scores along with the standard 
-deviation.
+Performs cross-validation on the given data using StratifiedKFold and prints out the scores along with the standard 
+deviation. Also fits the data once and displays the corresponding feature importances. 
 """
-def cross_validate(data, target, splits, is_shuffled):
-    rf = ensemble.RandomForestClassifier(n_estimators=10, max_features=None, class_weight="balanced")
-    skf = StratifiedKFold(n_splits=splits, shuffle=is_shuffled)
+def predicting_with_cross_validation(filename, to_predict, splits):
+    data = read_data(filename)
+    features = [feature for feature in data if not feature in [to_predict, "seg"]]
+    print("Features: ")
+    print(features)
+    interictal_data = data[data[to_predict] == 1]
+    preictal_data = data[data[to_predict] == 2]
 
-    scores = cross_val_score(rf, data, target, cv=skf)
-    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+    # The number of windows of each class (interictal and preictal) to include both in the training and test data
+    no_of_class_windows = int(len(preictal_data) / 2)
+
+    importances_dict = defaultdict(float)
+    std_dict = defaultdict(float)
+    predictions = []
+    for i in range(splits):
+        print("Iteration ", str(i + 1))
+        rfc = ensemble.RandomForestClassifier(n_estimators=10, max_features=None, class_weight="balanced")
+
+        # Shuffle the data first
+        preictal_data = shuffle(preictal_data)
+        interictal_data = shuffle(interictal_data)
+
+        # Take the first no_of_class_windows preictal and interictal windows
+        train_X_preictal = preictal_data[features][:no_of_class_windows]
+        train_y_preictal = preictal_data[:no_of_class_windows][to_predict]
+        train_X_interictal = interictal_data[:no_of_class_windows][features]
+        train_y_interictal = interictal_data[:no_of_class_windows][to_predict]
+
+        train_data = pd.concat([train_X_preictal, train_X_interictal], ignore_index=True)
+        train_target = pd.concat([train_y_preictal, train_y_interictal], ignore_index=True)
+
+        # Take the next no_of_class_windows preictal and interictal windows
+        test_X_preictal = preictal_data[no_of_class_windows:][features]
+        test_y_preictal = preictal_data[no_of_class_windows:][to_predict]
+        test_X_interictal = interictal_data[no_of_class_windows:no_of_class_windows * 2][features]
+        test_y_interictal = interictal_data[no_of_class_windows:no_of_class_windows * 2][to_predict]
+
+        test_data = pd.concat([test_X_preictal, test_X_interictal], ignore_index=True)
+        test_target = pd.concat([test_y_preictal, test_y_interictal], ignore_index=True)
+
+        rfc.fit(train_data, train_target)
+
+        importances = rfc.feature_importances_
+        std = np.std([tree.feature_importances_ for tree in rfc.estimators_], axis=0)
+
+        for i in range(len(features)):
+            importances_dict[features[i]] += abs(importances[i])
+            std_dict[features[i]] += abs(std[i])
+
+        # Predict and append the score to the predictions list
+        score = rfc.score(test_data, test_target)
+        predictions.append(score)
+
+    print("Average prediction score: ", str(round(sum(predictions)/splits, 3)))
+
+    importances_list = list(zip([round(impt/splits, 4) for impt in list(importances_dict.values())],
+                                list(importances_dict.keys())))
+    importances_list = sorted(importances_list, reverse=True)
+    std_list = [round(std_dict[pair[1]]/splits, 4) for pair in importances_list]
+
+    plot_feature_importances(importances_list, std_list, features)
 
 """
 :param data (pandas DataFrame) -- the data used in predicting
@@ -189,16 +315,6 @@ def get_feature_importances(data, features, rfc):
     plt.show()
 
 
-# data_target_features = get_data_target_features("patient1_10sec_data_vol2.csv", TO_PREDICT)
-#
-# data = data_target_features[0]
-# target = data_target_features[1]
-# features = data_target_features[2]
 
-# rf = ensemble.RandomForestClassifier(n_estimators=10, max_features=None, class_weight="balanced")
-# rf.fit(data, target)
-# get_feature_importances(data, target, features, rf)
-#
-# cross_validate(data, target, 5, True)
-
-predicting_with_different_segs(FNM, TO_PREDICT, 5)
+predicting_with_cross_validation(FNM, TO_PREDICT, 5)
+# predicting_with_different_segs(FNM, TO_PREDICT, 5)
