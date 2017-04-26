@@ -12,10 +12,10 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.utils import shuffle
 import numpy as np
 
-MAIN_DIR = sys.argv[1]
-DATA_DIR = sys.argv[2]
-# Name of the file
-FNM = sys.argv[3]
+# Name of the data file
+DATA_DIR = sys.argv[1]
+# Name of the data file
+FNM = sys.argv[2]
 TO_PREDICT = "class"
 
 print("File: " + FNM)
@@ -30,7 +30,6 @@ def read_data(filename):
     print("Reading data...")
     os.chdir(DATA_DIR)
     data = pd.read_csv(filename, delimiter=";")
-    os.chdir(MAIN_DIR)
     return data
 
 """
@@ -55,17 +54,25 @@ def get_data_target_features(filename, to_predict):
     data_target = pd.concat([data_interictal, data_preictal], ignore_index=True)[to_predict]
     return data_features, data_target, features
 
+"""
+:param top_dict (dict<str, float>) -- the dictionary containing the chosen features and their scores
 
-def print_top_features(top_dict):
+Prints out the features and their scores in their ranking order.
+"""
+def print_chosen_features(top_dict):
+    print("Chosen features: ")
     for i in range(len(top_dict)):
         print("{}. feature {} ({})".format(str(i + 1), top_dict[i][0], str(top_dict[i][1])))
 
-
-def print_top_n_features(dict, n):
-    for i in range(n):
-        print("{}. feature {} ({})".format(str(i + 1), dict[i][0], str(dict[i][1])))
-
-
+"""
+:param data (array) -- the data that contains the windows with the values of the features in <features>
+:param target (array) -- an array that corresponds to <data> and contains the values of the feature "class" (1 for 
+                         interictals and 2 for preictals)
+:param features (list) -- the features used in training
+:param k (int) -- the number of features to select using SelectKBest
+                        
+Selects k best features using SelectKBest and returns the data with only the values of those features.                         
+"""
 def fit_with_SelectKBest(data, target, features, k):
     selector = SelectKBest(f_classif, k=k)
     data = selector.fit_transform(data, target)
@@ -74,15 +81,7 @@ def fit_with_SelectKBest(data, target, features, k):
     top_features = [features[i] for i in range(len(features)) if selector.get_support()[i]]
     top_scores = [all_scores[i] for i in range(len(all_scores)) if selector.get_support()[i]]
     top_dict = sorted(dict(zip(top_features, top_scores)).items(), key=operator.itemgetter(1), reverse=True)
-    all_dict = sorted(dict(zip(features, all_scores)).items(), key=operator.itemgetter(1), reverse=True)
-
-    print_top_features(top_dict)
-    print_top_n_features(all_dict, 20)
-
-    # Plot the scores
-    plt.bar(range(len(features)), all_scores)
-    plt.xticks(range(len(features)), features, rotation='vertical')
-    plt.show()
+    print_chosen_features(top_dict)
 
     return data
 
@@ -188,21 +187,33 @@ def predicting_with_different_segs(filename, to_predict, tries, k):
     print("Average score: " + str(sum(scores) / len(scores)))
 
 
-def cross_validate(data, target, splits, is_shuffled):
+"""
+:param filename (str) -- the name of the file where the data resides
+:param to_predict (str) -- the name of the value which is to be predicted
+:param splits (int) -- the number of splits for the cross validation
+:param is_shuffled (bool) -- True, if data is to be shuffled before splitting in cross validation, False otherwise
+:param use_select_k (bool) -- True, if SelectKBest is used to fit the data before fitting with GaussianNB
+:param k (int) -- the number of features to select with SelectKBest
+
+Predicts using the cross_val_score method and uses SelectKBest to fit the data beforehand, if the use_select_k is set to
+True. 
+"""
+def predicting_with_cross_validation(filename, to_predict, splits, is_shuffled, use_select_k, k):
+    data_target_features = get_data_target_features(filename, to_predict)
+
+    data = data_target_features[0]
+    target = data_target_features[1]
+    features = data_target_features[2]
+
+    if use_select_k:
+        data = fit_with_SelectKBest(data, target, features, k)
+
     clf = GaussianNB()
     skf = StratifiedKFold(n_splits=splits, shuffle=is_shuffled)
+    print("Predicting...")
     scores = cross_val_score(clf, data, target, cv=skf)
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
+predicting_with_cross_validation(FNM, TO_PREDICT, 5, True, True, 20)
 
-# data_target_features = get_data_target_features(FNM, TO_PREDICT)
-#
-# data = data_target_features[0]
-# target = data_target_features[1]
-# features = data_target_features[2]
-#
-# data = fit_with_SelectKBest(data, target, 5)
-#
-# cross_validate(data, target, 5, True)
-
-predicting_with_different_segs(FNM, TO_PREDICT, 5, 20)
+# predicting_with_different_segs(FNM, TO_PREDICT, 5, 20)
