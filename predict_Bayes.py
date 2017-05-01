@@ -41,7 +41,7 @@ def read_data(filename):
 """
 def get_data_target_features(filename, to_predict):
     data = read_data(filename)
-    features = [feature for feature in data if not feature in [to_predict, "seg"]]
+    features = [feature for feature in data if not feature in [to_predict, "seg"] and not "electrode" in feature]
     print("Features: ")
     print(features)
     data_preictal = data[data[to_predict] == 2]
@@ -96,7 +96,7 @@ then fits the model and predicts <tries> times
 """
 def predicting_with_different_segs(filename, to_predict, tries, k):
     data = read_data(filename)
-    features = [feature for feature in data if not feature in [TO_PREDICT, "seg"]]
+    features = [feature for feature in data if not feature in [to_predict, "seg"] and not "electrode" in feature]
     print("Features: ")
     print(features)
 

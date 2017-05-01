@@ -106,7 +106,7 @@ then fits the model and predicts <tries> times
 """
 def predicting_with_different_segs(filename, to_predict, tries):
     data = read_data(filename)
-    features = [feature for feature in data if not feature in [TO_PREDICT, "seg"]]
+    features = [feature for feature in data if not feature in [to_predict, "seg"] and not "electrode" in feature]
     print("Features: ")
     print(features)
 
@@ -196,11 +196,11 @@ def predicting_with_different_segs(filename, to_predict, tries):
         print("Test interictal segments: " + str(test_interictal_segments))
         print("Test preictal segments: " + str(test_preictal_segments))
 
-        print("Incorrectly predicted tSNE")
-        show_tsne_plot(incorrect_data, incorrect_target)
-
-        print("Correctly predicted tSNE")
-        show_tsne_plot(correct_data, correct_target)
+        # print("Incorrectly predicted tSNE")
+        # show_tsne_plot(incorrect_data, incorrect_target)
+        #
+        # print("Correctly predicted tSNE")
+        # show_tsne_plot(correct_data, correct_target)
 
         # Get the feature importances for this iteration and add the results to the sums in feature_importances
         importances = rfc.feature_importances_
@@ -230,7 +230,7 @@ deviation. Also fits the data once and displays the corresponding feature import
 """
 def predicting_with_cross_validation(filename, to_predict, splits):
     data = read_data(filename)
-    features = [feature for feature in data if not feature in [to_predict, "seg"]]
+    features = [feature for feature in data if not feature in [to_predict, "seg"] and not "electrode" in feature]
     print("Features: ")
     print(features)
     interictal_data = data[data[to_predict] == 1]

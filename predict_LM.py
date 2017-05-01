@@ -38,7 +38,7 @@ def read_data(filename):
 """
 def get_data_target_features(filename, to_predict):
     data = read_data(filename)
-    features = [feature for feature in data if not feature in [to_predict, "seg"]]
+    features = [feature for feature in data if not feature in [to_predict, "seg"] and not "electrode" in feature]
     print("Features: ")
     print(features)
     data_preictal = data[data[to_predict] == 2]
@@ -99,7 +99,7 @@ Fits and predicts shuffled data for <iterations> iterations, averages the scores
 """
 def predicting_with_cross_validation(filename, to_predict, iterations):
     data = read_data(filename)
-    features = [feature for feature in data if not feature in [to_predict, "seg"]]
+    features = [feature for feature in data if not feature in [to_predict, "seg"] and not "electrode" in feature]
     print("Features: ")
     print(features)
     interictal_data = data[data[to_predict] == 1]
