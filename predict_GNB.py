@@ -110,8 +110,13 @@ def predicting_with_different_segs(filename, to_predict, tries, k):
 
     # Number of preictal segments
     no_pr_seg = len(preictal_segments)
-    # The number of segments of a certain class (interictal and preictal) to include in the train data
-    no_cl_seg = int(no_pr_seg / 2)
+    # Number of interictal segments
+    no_int_seg = len(interictal_segments) / 2
+
+    preictals_in_train = int(no_pr_seg / 2)
+    preictals_in_test = int(no_pr_seg / 2)
+    interictals_in_train = int(no_pr_seg / 2)
+    interictals_in_test = int(no_pr_seg / 2)
 
     # Contains the accuracies for each prediction
     scores = []
@@ -124,8 +129,8 @@ def predicting_with_different_segs(filename, to_predict, tries, k):
         interictal_segments = shuffle(interictal_segments)
 
         # Get the TRAIN SEGMENTS as the FIRST no_cl_seg segments of the shuffled preictal and interictal segments
-        train_preictal_segments = preictal_segments[:no_cl_seg]
-        train_interictal_segments = interictal_segments[:no_cl_seg]
+        train_preictal_segments = preictal_segments[:preictals_in_train]
+        train_interictal_segments = interictal_segments[:interictals_in_train]
         print("{}. Training set interictal segments: {}".format(str(i + 1), str(train_interictal_segments)))
         print("{}. Training set preictal segments: {}".format(str(i + 1), str(train_preictal_segments)))
 
@@ -143,8 +148,8 @@ def predicting_with_different_segs(filename, to_predict, tries, k):
         print("Training data length: " + str(len(train_data)))
 
         # Get the TEST SEGMENTS as the LAST no_cl_seg segments of the shuffled preictal and interictal segments
-        test_preictal_segments = preictal_segments[no_cl_seg:]
-        test_interictal_segments = interictal_segments[no_cl_seg:no_cl_seg * 2]
+        test_preictal_segments = preictal_segments[preictals_in_test:]
+        test_interictal_segments = interictal_segments[interictals_in_test:interictals_in_test * 2]
         print("{}. Test set interictal segments: {}".format(str(i + 1), str(test_interictal_segments)))
         print("{}. Test set preictal segments: {}".format(str(i + 1), str(test_preictal_segments)))
 
@@ -214,6 +219,6 @@ def predicting_with_cross_validation(filename, to_predict, splits, is_shuffled, 
     scores = cross_val_score(clf, data, target, cv=skf)
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
-predicting_with_cross_validation(FNM, TO_PREDICT, 5, True, True, 20)
-
+# Comment in with the necessary parameters to get results
+# predicting_with_cross_validation(FNM, TO_PREDICT, 5, True, True, 20)
 # predicting_with_different_segs(FNM, TO_PREDICT, 5, 20)
