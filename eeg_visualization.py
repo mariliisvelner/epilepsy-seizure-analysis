@@ -53,16 +53,23 @@ def show_plot(data):
     fig, ax = plt.subplots(nrows=15, ncols=1, facecolor='white')
     # 5000 Hz is the sampling frequency
     # 5000 * 60 is the amount of data points corresponding to one minute
-    dp = 60 * 5000 * 5
+    dp = 5000 * 60 * 5
+    lines = [x for x in range(1, dp + 1, 5000 * 50)]
     i = 0
     for row in ax:
         row.plot(list(range(1, dp + 1)), data[i][0:dp])
+
+        # Add red vertical lines for every point x in lines
+        # for x in lines:
+        #     row.axvline(x=x, color="red")
+
         # Remove the axes
         row.axis("off")
         i += 1
     # Reduce the space between the subplots
     plt.subplots_adjust(wspace=0)
     plt.show()
+
 
 fnm = OBJECT + mat_templ
 data = get_data(fnm, seg_templ, FILE_NO)
